@@ -57,6 +57,7 @@ namespace Project8
 
         private bool ValidateMoveForPiece(Point currentPoint, Point nextPoint, Board board, Enums.TileType opponentRegularPieceType, Enums.TileType opponentKingPieceType, bool isKing, bool isMovingUp)
         {
+            bool isPieceOnPromotionTile = board.IsPromotionTile(nextPoint);
             // Check directional restrictions
             if (!isKing)
             {
@@ -73,10 +74,16 @@ namespace Project8
             // Check if the target tile is empty or a valid capture
             if (board.IsTileEmpty(nextPoint) && (!board.IsCaptureMove(currentPoint,nextPoint)))
             {
+                if (isPieceOnPromotionTile)
+                {
+                    string valueAtPosition = board.GetValueAtPosition(currentPoint);
+                    board.NewestBoardMatrix[currentPoint.x, currentPoint.y] = board.DecideWhichKingForCurrentPiece(valueAtPosition);
+                }
                 return true; // Simple move to an empty tile
             }
             else if (board.IsCaptureMove(currentPoint, nextPoint))
             {
+               
                 Point capturedPiece = board.GetTileBetween(currentPoint, nextPoint);
                 if (!board.IsTileEmpty(capturedPiece))
                 {
@@ -93,43 +100,121 @@ namespace Project8
             throw new Exception("Invalid move: target tile is not empty and no valid capture.");
         }
 
-      /*  public void ScanBoardForMoves(Board board, Player currentPlayer)
+        public bool IsOptimalMove(Point currentPoint, Point nextPoint, Board currentBoard, Player currentPlayer)
         {
-            currentPlayer.ClearPossibleMoves(); // Clear previous moves
-            for (int row = 0; row < board.Rows; row++)
+            bool isOptimalMove = true;
+            // Check if the current move is a capture move
+            bool isCurrentMoveCapture = currentBoard.IsCaptureMove(currentPoint, nextPoint);
+            if (isCurrentMoveCapture)
             {
-                for (int col = 0; col < board.Columns; col++)
+                return isOptimalMove;
+            }
+            // If the current move is not a capture move, check if any capture moves are available
+            if (!isCurrentMoveCapture)
+            {
+                for (int row = 0; row < currentBoard.BoardSize; row++)
                 {
-                    Point currentPoint = new Point(row, col);
-                    string tileValue = board.GetValueAtPosition(currentPoint);
-
-                    // Check if the tile belongs to the current player
-                    if (currentPlayer.OwnsPiece(tileValue))
+                    for (int col = 0; col < currentBoard.BoardSize; col++)
                     {
-                        Enums.TileType tileType = board.ConvertPositionValueToTileType(tileValue);
+                        Point currentPiecePoint = new Point(row, col);
+                        string tileValue = currentBoard.GetValueAtPosition(currentPiecePoint);
 
-                        // Check all possible diagonal moves (1 or 2 squares)
-                        int[] rowOffsets = { -1, 1, -2, 2 };
-                        int[] colOffsets = { -1, 1, -2, 2 };
-
-                        for (int i = 0; i < rowOffsets.Length; i++)
+                        // Check if the tile belongs to the current player
+                        if (currentPlayer.OwnsPiece(tileValue))
                         {
-                            Point nextPoint = new Point(row + rowOffsets[i], col + colOffsets[i]);
-                            try
+                            // Check all possible diagonal moves (2 squares, as 1-square moves are not captures)
+                            int[] rowOffsets = { -2, 2 };
+                            int[] colOffsets = { -2, 2 };
+                            if (currentBoard.IsKing(tileValue))
                             {
-                                if (CheckIfMoveIsValid(currentPoint, nextPoint, board, currentPlayer))
+                                foreach (int rowOffset in rowOffsets)
                                 {
-                                    currentPlayer.AddPossibleMove(nextPoint);
+                                    foreach (int colOffset in colOffsets)
+                                    {
+                                        Point potentialCapturePoint = new Point(row + rowOffset, col + colOffset);
+                                        isOptimalMove = ValidatePossibleOffsetCapture(currentPiecePoint, potentialCapturePoint, currentBoard, currentPlayer);
+                                    }
                                 }
                             }
-                            catch (Exception)
+                            else
                             {
-                                // Ignore invalid moves
+                                if(currentBoard.GetValueAtPosition(currentPiecePoint) == " X ")
+                                {
+                                    foreach(int colOffset in colOffsets)
+                                    {
+                                        Point potentialCapturePoint = new Point(row + rowOffsets[0], col + colOffset);
+                                        isOptimalMove = ValidatePossibleOffsetCapture(currentPiecePoint, potentialCapturePoint, currentBoard, currentPlayer);
+                                    }
+                                }
+                                else
+                                {
+                                    foreach (int colOffset in colOffsets)
+                                    {
+                                        Point potentialCapturePoint = new Point(row + rowOffsets[1], col + colOffset);
+                                        isOptimalMove = ValidatePossibleOffsetCapture(currentPiecePoint, potentialCapturePoint, currentBoard, currentPlayer);
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
+            return isOptimalMove;
         }
-    */}
+
+        public bool ValidatePossibleOffsetCapture(Point i_CurrentPoint, Point i_PossibleCapturePoint, Board i_CurrentBoard, Player i_CurrentPlayer)
+        {
+            if (!i_CurrentBoard.CheckIfMoveOutOfBounds(i_PossibleCapturePoint))
+            {
+                if (!i_CurrentBoard.IsTileEmpty(i_CurrentBoard.GetTileBetween(i_CurrentPoint, i_PossibleCapturePoint))
+                    && !i_CurrentPlayer.OwnsPiece(i_CurrentBoard.GetValueAtPosition(i_CurrentBoard.GetTileBetween(i_CurrentPoint, i_PossibleCapturePoint))))
+                {
+                    // If a capture move exists, the current move is not optimal
+                    return false;
+                }
+            }
+
+            // If no better moves exist, the move is optimal
+            return true;
+        }
+        /*  public void ScanBoardForMoves(Board board, Player currentPlayer)
+          {
+              currentPlayer.ClearPossibleMoves(); // Clear previous moves
+              for (int row = 0; row < board.Rows; row++)
+              {
+                  for (int col = 0; col < board.Columns; col++)
+                  {
+                      Point currentPoint = new Point(row, col);
+                      string tileValue = board.GetValueAtPosition(currentPoint);
+
+                      // Check if the tile belongs to the current player
+                      if (currentPlayer.OwnsPiece(tileValue))
+                      {
+                          Enums.TileType tileType = board.ConvertPositionValueToTileType(tileValue);
+
+                          // Check all possible diagonal moves (1 or 2 squares)
+                          int[] rowOffsets = { -1, 1, -2, 2 };
+                          int[] colOffsets = { -1, 1, -2, 2 };
+
+                          for (int i = 0; i < rowOffsets.Length; i++)
+                          {
+                              Point nextPoint = new Point(row + rowOffsets[i], col + colOffsets[i]);
+                              try
+                              {
+                                  if (CheckIfMoveIsValid(currentPoint, nextPoint, board, currentPlayer))
+                                  {
+                                      currentPlayer.AddPossibleMove(nextPoint);
+                                  }
+                              }
+                              catch (Exception)
+                              {
+                                  // Ignore invalid moves
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      */
+    }
 }

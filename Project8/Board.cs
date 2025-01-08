@@ -16,6 +16,18 @@ namespace Project8
         private string[,] m_CurrentBoardMatrix;// DELETE IF NOT NECESSARY
         private List<Point[]> m_ValidMoves = new List<Point[]>(); // Store valid moves as pairs of points
 
+        public string[,] NewestBoardMatrix
+        {
+            get
+            {
+                return m_NewestBoardMatrix;
+            }
+            set
+            {
+                m_NewestBoardMatrix = value;
+            }
+        }
+
         // Property to get and set the board size
         public int BoardSize //  TODO ask guy about naming convention
         {
@@ -117,6 +129,26 @@ namespace Project8
         internal void EraseCapturedPiece(Point capturedPiece)
         {
             m_NewestBoardMatrix[capturedPiece.x, capturedPiece.y] = "   ";
+        }
+
+        public bool IsPromotionTile(Point nextPoint)
+        {
+            return nextPoint.x == m_boardSize - 1 || nextPoint.x == 0;
+        }
+
+        public string UpdateBoardWithKingPiece(Point i_PointToPromoteToKing)
+        {
+            return GetValueAtPosition(i_PointToPromoteToKing);    
+        }
+
+        public string DecideWhichKingForCurrentPiece(string i_ValueAtPosition)
+        {
+            return i_ValueAtPosition == " X " ? " K " : " U ";
+        }
+
+        internal bool IsKing(string i_PieceTypeToCheck)
+        {
+            return i_PieceTypeToCheck == " K " || i_PieceTypeToCheck == " U ";
         }
     }
 }
