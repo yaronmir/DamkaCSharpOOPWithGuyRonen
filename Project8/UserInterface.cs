@@ -15,83 +15,162 @@ namespace Project8
         private Game m_Game = new Game();
         int turnNumber = 0;
         bool isFirstMove = true;
+        bool isValidGameType = false;
+        bool wasQPressed = false;
+        string lastMoveMade;
+        string userCurrentMove;
+        Player lastPlayerThatPlayed;
         public void Run()
         {
-            bool endConditionReached = false;
             Console.WriteLine("Please enter a user name consisting of maximum 20 letters without spaces:");
             string firstPlayerName = GetValidPlayerName();
             GetBoardSizeFromUser();
             Console.WriteLine("Please enter 1 for singleplayer game (vs computer) or 2 for multiplayer game");
-            int userGameChoice = int.Parse(Console.ReadLine());
-            while (ValidateGameChoice(userGameChoice))
+            int userGameChoice;
+            while (!isValidGameType)
             {
-                Console.WriteLine("Invalid choice,Please enter 1 for singleplayer game (vs computer) or 2 for multiplayer game");
-                userGameChoice = int.Parse(Console.ReadLine());
+                string input = Console.ReadLine();
+                if (int.TryParse(input, out userGameChoice) && !ValidateGameChoice(userGameChoice))
+                {
+                    isValidGameType = true;
+                    InitializeGame(userGameChoice, firstPlayerName);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid choice. Please enter 1 for singleplayer game (vs computer) or 2 for multiplayer game.");
+                }
             }
-            InitializeGame(userGameChoice, firstPlayerName);
 
-            while (!endConditionReached)
-            {
+            while (!IsGameOver())
+            {   
                 Player currentPlayer = m_Game.GetCurrentPlayer(turnNumber);
                 PrintBoard();
+                if (!isFirstMove)
+                {
+                    Console.WriteLine($"{lastPlayerThatPlayed.PlayerName}'s move was ({lastPlayerThatPlayed.PlayerPiece}): {lastMoveMade}");
+                }
                 if (isFirstMove)
                 {
                     Console.Write($" " + currentPlayer.PlayerName + "'s turn: ");
+                    userCurrentMove = MakeMoveForPlayer(currentPlayer);
+                    if (isQuitConditionPressed(userCurrentMove))
+                    {
+                        Console.WriteLine($"{m_Game.GetCurrentPlayer(turnNumber).PlayerName} wins by forfeit with the score of {m_Game.CalculateWinnersScore()}");
+                        break;
+                    }
+                    lastMoveMade = userCurrentMove;
                     isFirstMove = false;
                 }
                 else if (m_Game.GetCurrentPlayer(turnNumber).PlayerType.Equals("Computer"))
                 {
-                    Console.WriteLine("It is computer's turn (press Enter to see its move):");
+                    Console.Write("It is computer's turn (press Enter to see its move):");
                     Console.ReadLine();
-                    m_Game.MakeComputerMove();
-                    Ex02.ConsoleUtils.Screen.Clear();
+                    try
+                    {
+                        m_Game.CheckingPossibleValidMoves(m_Game.GetCurrentBoard(), m_Game.GetCurrentPlayer(turnNumber));
+                        lastMoveMade = m_Game.MakeComputerMove(m_Game.GetCurrentPlayer(turnNumber));
+                        Ex02.ConsoleUtils.Screen.Clear();
+                    }
+                    catch (Exception e)
+                    {
+                        { Console.WriteLine(e); }
+                    }
                 }
-                else
+                else if (!isFirstMove && m_Game.GetCurrentPlayer(turnNumber).PlayerType.Equals("Player"))
                 {
-                    Console.WriteLine($"It is {0}'s turn ({1}): ", m_Game.GetCurrentPlayer(turnNumber).PlayerName, m_Game.GetCurrentPlayer(turnNumber).PlayerPiece);
+                    Console.WriteLine($"It is {currentPlayer.PlayerName}'s turn ({currentPlayer.PlayerPiece}): ");
+                    userCurrentMove = MakeMoveForPlayer(currentPlayer);
+                    if (isQuitConditionPressed(userCurrentMove))
+                    {
+                        Console.WriteLine($"{lastPlayerThatPlayed.PlayerName} wins by forfeit with the score of {m_Game.CalculateWinnersScore()}");
+                        break;
+                    }
+                    lastMoveMade = userCurrentMove;
                 }
 
-                string userMoveString = Console.ReadLine();
-                if (userMoveString == "Q")
-                {
-                    endConditionReached = true;
-                }
-                //checks if the syntax of the move is valid, if not returns false,
-                //and if it is, it checks if the move itself is possible, piece movement wise
-                else
-                {
-                    GetMoveFromUser(userMoveString, currentPlayer);
-                    Ex02.ConsoleUtils.Screen.Clear();
-                }
                 if (turnNumber == 1)
                 {
-                    turnNumber = 0;
+                        lastPlayerThatPlayed = m_Game.GetCurrentPlayer(turnNumber);
+                        turnNumber = 0;
                 }
                 else
                 {
+                    lastPlayerThatPlayed = m_Game.GetCurrentPlayer(turnNumber);
                     turnNumber++;
                 }
             }
+
+            Console.WriteLine("Would you like to keep playing? Enter Y if yes and N if not");
+            CheckIfPlayAgain(Console.ReadLine());
+            
+
+        }
+
+        private void CheckIfPlayAgain(string i_userInput)
+        {
+        }
+
+        private string MakeMoveForPlayer(Player i_PlayerToPlay)
+        {
+            Point[] movementPoints = new Point[2];
+            string userMoveString = Console.ReadLine();
+
+            //checks if the syntax of the move is valid, if not returns false,
+            //and if it is, it checks if the move itself is possible, piece movement wise
+            bool isTheInputAGoodMove = false;
+            while (!isTheInputAGoodMove)
+            {
+                if (userMoveString == "Q")
+                {
+                    return "Q";
+                }
+                if (!ValidateSyntaxOfMove(userMoveString, i_PlayerToPlay, out movementPoints))
+                {
+                    Console.WriteLine("Invalid move syntax, please write the move in this format: ROWcol>ROWcol. ");
+                    userMoveString = Console.ReadLine();
+                }
+                else
+                {
+                    if (!CheckIfMoveIsValid(movementPoints, i_PlayerToPlay))
+                    {
+                        Console.WriteLine("Invalid move, please enter a new move again!");
+                        userMoveString = Console.ReadLine();
+                    }
+                    else
+                    {
+                        m_Game.UpdateBoard(movementPoints);
+                        Ex02.ConsoleUtils.Screen.Clear();
+                        isTheInputAGoodMove = true;
+                    }
+                }
+            }
+            return userMoveString;
+        }
+        
+
+        private bool CheckIfMoveIsValid(Point[] i_PointsArrayOfMove, Player i_CurrentPlayerPlaying )
+        {
+            return m_Game.ValidateNewTurn(i_PointsArrayOfMove, i_CurrentPlayerPlaying);
         }
 
         private bool IsGameOver()
         {
-            return !(isQuitConditionPressed() && IsDrawAchieved() && IsVictoryAchieved());
+            return !(IsDrawAchieved() || IsVictoryAchieved());
         }
 
         private bool IsVictoryAchieved()
         {
-            throw new NotImplementedException();
+            return m_Game.GetIndexOfWinningPlayer() >= 0;
         }
 
         private bool IsDrawAchieved()
         {
-            throw new NotImplementedException();
+            return m_Game.CheckIfDraw();
         }
 
-        private bool isQuitConditionPressed()
+        private bool isQuitConditionPressed(string i_UserInput)
         {
-            throw new NotImplementedException();
+            return i_UserInput == "Q";
         }
 
         private void InitializeGame(int userGameChoice, string i_FirstPlayerName)
@@ -198,18 +277,9 @@ namespace Project8
             }
             return playerName;
         }
-        public void GetMoveFromUser(string i_MoveDescription, Player i_PlayersMove)
+        public bool ValidateSyntaxOfMove(string i_MoveDescription, Player i_PlayersMove, out Point[] o_PointsToMoveBy)
         {
-            Point[] pointsMovement = new Point[2];
-            while (!CheckIfValidMoveSyntax(i_MoveDescription, out pointsMovement))
-            {
-                Console.WriteLine("Invalid move syntax. Please enter a move in this format : ROWcol>ROWcol");
-                i_MoveDescription = Console.ReadLine();
-            }
-            if(m_Game.ValidateNewTurn(pointsMovement, i_PlayersMove))
-            {
-                m_Game.UpdateBoard(pointsMovement);
-            }
+            return CheckIfValidMoveSyntax(i_MoveDescription, out o_PointsToMoveBy);
         }
 
         // Method to validate the move syntax

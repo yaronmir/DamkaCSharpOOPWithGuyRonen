@@ -8,7 +8,7 @@ namespace Project8
 {
     public class Player
     {
-        List<Point> m_PossibleMovesListForComputer = new List<Point>();
+        List<Point[]> m_PossibleMovesListForComputer = new List<Point[]>();
         private readonly string m_PlayerName;
         private readonly string m_PlayerType;
         private readonly string m_PlayerPiece;
@@ -50,12 +50,13 @@ namespace Project8
         {
             get => m_KingPiece;
         }
-        public void AddPossibleMove(Point move)
+        public void AddPossibleMove(Point i_StartingMove, Point i_EndingMove)
         {
-            m_PossibleMovesListForComputer.Add(move);
+            // Add the start and end points as an array
+            m_PossibleMovesListForComputer.Add(new Point[] { i_StartingMove, i_EndingMove });
         }
 
-        public List<Point> GetPossibleMoves()
+        public List<Point[]> GetPossibleMoves()
         {
             return m_PossibleMovesListForComputer;
         }

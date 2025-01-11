@@ -13,8 +13,6 @@ namespace Project8
     {
         private int m_boardSize;
         private string[,] m_NewestBoardMatrix;
-        private string[,] m_CurrentBoardMatrix;// DELETE IF NOT NECESSARY
-        private List<Point[]> m_ValidMoves = new List<Point[]>(); // Store valid moves as pairs of points
 
         public string[,] NewestBoardMatrix
         {
@@ -69,14 +67,16 @@ namespace Project8
                     }
                 }
             }
-            m_CurrentBoardMatrix = m_NewestBoardMatrix;
         }
         public void UpdateBoard(Point i_StartPoint, Point i_EndPoint)
         {
             m_NewestBoardMatrix[i_EndPoint.x,i_EndPoint.y] = GetValueAtPosition(i_StartPoint);
             m_NewestBoardMatrix[i_StartPoint.x,i_StartPoint.y] = "   ";
+            if (IsCaptureMove(i_StartPoint, i_EndPoint))
+            {
+                EraseCapturedPiece(GetTileBetween(i_StartPoint,i_EndPoint));
+            }
 
-            m_CurrentBoardMatrix = m_NewestBoardMatrix;
         }
 
 
@@ -84,7 +84,7 @@ namespace Project8
         {
             if (CheckIfMoveOutOfBounds(i_currentPoint))
                 throw new IndexOutOfRangeException("Row or column is out of bounds.");
-            return m_CurrentBoardMatrix[i_currentPoint.x, i_currentPoint.y];
+            return m_NewestBoardMatrix[i_currentPoint.x, i_currentPoint.y];
         }
 
         public Enums.TileType ConvertPositionValueToTileType(string i_ValueOfTile)
@@ -149,6 +149,67 @@ namespace Project8
         internal bool IsKing(string i_PieceTypeToCheck)
         {
             return i_PieceTypeToCheck == " K " || i_PieceTypeToCheck == " U ";
+        }
+
+
+        public void ExecuteMove(Point[] movePoints, Player currentPlayer)
+        {
+
+            Point startPoint = movePoints[0];
+            Point endPoint = movePoints[1];
+
+
+            // Validate move type
+            if (IsCaptureMove(startPoint, endPoint))
+            {
+                // Handle capture move
+                Point capturedPoint = GetTileBetween(startPoint, endPoint);
+
+                UpdateBoard(startPoint, endPoint);
+
+                // Check for promotion if the move lands on a promotion tile
+                if (IsPromotionTile(endPoint))
+                {
+                    string currentPieceValue = GetValueAtPosition(endPoint);
+                    NewestBoardMatrix[endPoint.x, endPoint.y] = DecideWhichKingForCurrentPiece(currentPieceValue);
+                }
+            }
+            else
+            {
+                if (IsTileEmpty(endPoint))
+                {
+                    UpdateBoard(startPoint, endPoint);
+                    // Check for promotion if the move lands on a promotion tile
+                    if (IsPromotionTile(endPoint))
+                    {
+                        string currentPieceValue = GetValueAtPosition(endPoint);
+                        NewestBoardMatrix[endPoint.x, endPoint.y] = DecideWhichKingForCurrentPiece(currentPieceValue);
+                    }
+                }
+            }
+        }
+
+        public Dictionary<string, int> CountPiecesOnBoard()
+        {
+            Dictionary<string, int> pieceCounts = new Dictionary<string, int>
+             {
+                 { " X ", 0 }, 
+                 { " O ", 0 },
+                 { " K ", 0 }, 
+                 { " U ", 0 }  
+            };
+            for (int i = 0; i < m_boardSize; i++)
+            {
+                for (int j = 0; j < m_boardSize; j++)
+                {
+                    string piece = m_NewestBoardMatrix[i, j];
+                    if (pieceCounts.ContainsKey(piece))
+                    {
+                        pieceCounts[piece]++;
+                    }
+                }
+            }
+            return pieceCounts;
         }
     }
 }
